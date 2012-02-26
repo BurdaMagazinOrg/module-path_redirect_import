@@ -26,16 +26,22 @@ function path_redirect_import_drush($file) {
   if (($handle = fopen($file, "r")) !== FALSE) {
     while (($data = fgetcsv($handle, 10000, ",")) !== FALSE) {
       //Check if the CSV contains at least 2 required params
-      if(count($data) < 2)  continue;
+      if(count($data) < 2) continue;
       $redirect=array();
       if ($existing = path_redirect_load_by_source($data[1], isset($data[3]) ? $data[3] : '')) {
         $redirect['values']['rid'] = $existing['rid'];
+      }
+      $validate = path_redirect_import_validate_source_field($data[1]);
+      if ($validate['error']) {
+        drush_set_error('DRUSH_IMPORT_ERROR', $validate['message']);
+        continue;
       }
       $redirect['values']['source'] = $data[1];
       $aux_redirect = array();
       path_redirect_validate_redirect_field(array('#value' => $data[0]), $redirect);
       $redirect['values']['type'] = isset($data[2]) ? $data[2] : '301';
       $redirect['values']['language'] = isset($data[3]) ? $data[3] : '';
+
       $redirect = path_redirect_save($redirect['values']);
 
       if ($redirect) {

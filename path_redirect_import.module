@@ -1,5 +1,4 @@
 <?php
-// $Id$
 /**
  * @file
  * Author: www.ag-prime.com
@@ -92,7 +91,6 @@ function path_redirect_import_form_submit($form, &$form_state) {
   }
   $line_no = 0;
   $count = 0;
-  $output='';
   while ($line = fgetcsv($f, 1024, ",")) {
     $line_no++;
     $error = '';
@@ -102,29 +100,66 @@ function path_redirect_import_form_submit($form, &$form_state) {
     if ($line[0] == '' || $line[1] == '') {
       $error .= t('Line %line_no contains invalid data.', array('%line_no' => $line_no)) . '<br />';
     }
-    if ($line[2] == '') {
+    if (!isset($line[2]) || $line[2] == '') {
       $line[2] = '301';
+    }
+    if (!isset($line[3]) || $line[3] == '') {
+      $line[3] = '';
     }
     $data = array(
       'old_url' => $line[0],
       'new_url' => $line[1],
       'redirect_code' => $line[2],
+      'language' => $line[3],
     );
-    if ($error == '') {
-      if (!path_redirect_import_save_data($data)) {
-        drupal_set_message(t('Inserting the data in the database has failed.'), 'error');
-      }
-      else{
-        $count++;
-      }
+    if ($error != '') {
+      drupal_set_message(check_plain($error), 'error');
+      continue;
     }
-    else {
-      drupal_set_message($error, 'error');
+    $validate = path_redirect_import_validate_source_field($data['old_url']);
+    if($validate['error']) {
+      drupal_set_message(check_plain($validate['message']), 'error');
+      continue;
+    }
+    if (!path_redirect_import_save_data($data)) {
+      drupal_set_message(t('Inserting the data in the database has failed.'), 'error');
+    }
+    else{
+      $count++;
     }
   }
+
   if ($count > 0) {
     drupal_set_message(t('%count row(s) imported.', array('%count' => $count)), 'message');
   }
+}
+
+/**
+* Validate a redirect's source path (from) field.
+*/
+function path_redirect_import_validate_source_field($path) {
+  $error = FALSE;
+  $message = '';
+  // Check that the path contains no URL fragment.
+  if (strpos($path, '#') !== FALSE) {
+    $message = t('The source path (%path) cannot contain an URL fragment anchor.', array('path' => $path));
+    $error = TRUE;
+  }
+
+  // A redirect's 'from' cannot match any values from url_alias, it will cause an infinite loop.
+  if ($pid = db_result(db_query("SELECT pid FROM {url_alias} WHERE dst = '%s'", $path))) {
+    $message = t('You cannot add an existing alias as a redirect as it will not work. You must <a href="@alias-delete">delete the alias</a> first. (%path)', array('@alias-delete' => url('admin/build/path/delete/' . $pid, array('query' => drupal_get_destination())), 'path' => $path));
+    $error = TRUE;
+  }
+
+  // Cannot create redirects for valid paths.
+  $menu_item = menu_get_item($path);
+  if ($menu_item && $menu_item['page_callback'] != 'path_redirect_goto' && $path == $menu_item['path']) {
+    $message = t('The source path %path is a currently valid path. You cannot override existing paths. You can however, create URL aliases for them.', array('%path' => $path));
+    $error = TRUE;
+  }
+
+  return array('error' => $error, 'message' => $message);
 }
 
 /*
@@ -135,8 +170,10 @@ function path_redirect_import_save_data($data) {
   $redirect['values']['source'] = $data['old_url'];
   path_redirect_validate_redirect_field(array('#value' => $data['new_url']), $redirect);
   $redirect['values']['type'] = $data['redirect_code'];
+  $redirect['values']['language'] = $data['language'];
+  $parsed = parse_url($data['old_url']) + array('query' => '');
   //if the redirect for the URL exists, module overwrite with new value.
-  if ($existing = path_redirect_load_by_source($data['new_url'], isset($data['language']) ? $data['language'] : '')) {
+  if ($existing = path_redirect_load_by_source($data['old_url'], isset($data['language']) ? $data['language'] : '', path_redirect_get_query_array($parsed['query']))) {
     $redirect['values']['rid'] = $existing['rid'];
   }
   return path_redirect_save($redirect['values']);
