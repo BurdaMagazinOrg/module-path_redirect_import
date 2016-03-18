@@ -85,7 +85,12 @@ function path_redirect_import_read_file($file, $options = array()) {
     /** @var Drupal\redirect\Entity\Redirect $redirect */
     $redirect = Redirect::create();
     $redirect->setSource($source_parts['path'], $source_parts['query']);
-    $redirect->setRedirect($line[1]);
+    if(UrlHelper::isExternal($line[1])) {
+      continue;
+    }
+    else {
+      $redirect->setRedirect($line[1]);
+    }
     $redirect->setStatusCode($line[2]);
 
     try {
