@@ -4,31 +4,8 @@
  * @file
  * Page and form to import drupal path redirects
  */
-
-/**
- * Implements of hook_menu().
- */
-function path_redirect_import_menu() {
-  $items['admin/config/search/redirect/import'] = array(
-    'title' => 'Import',
-    'description' => 'Import redirects from file',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('path_redirect_import_form'),
-    'access arguments' => array('administer redirects'),
-    'file' => 'path_redirect_import.admin.inc',
-    'type' => MENU_LOCAL_TASK,
-  );
-  $items['admin/config/search/redirect/export'] = array(
-    'title' => 'Export',
-    'description' => 'Export redirects to a file',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('path_redirect_import_export_form'),
-    'access arguments' => array('administer redirects'),
-    'file' => 'path_redirect_import.admin.inc',
-    'type' => MENU_LOCAL_TASK,
-  );
-  return $items;
-}
+use Drupal\Component\Utility\UrlHelper;
+use Drupal\redirect\Entity\Redirect;
 
 /**
  * Function that processes the file
@@ -39,7 +16,7 @@ function path_redirect_import_read_file($file, $options = array()) {
     'no_headers' => TRUE,
     'override' => FALSE,
     'status_code' => '301',
-    'language' => LANGUAGE_NONE,
+//    'language' => LANGUAGE_NOT_SPECIFIED,
   );
 
   if (!$f = fopen($file, 'r')) {
@@ -51,7 +28,6 @@ function path_redirect_import_read_file($file, $options = array()) {
   $success = FALSE;
 
   while ($line = fgetcsv($f, 0, $options['delimiter'])) {
-    $message = array();
     $line_no++;
     if ($line_no == 1 && !$options['no_headers']) {
       drupal_set_message(t('Skipping the header row.'));
@@ -76,7 +52,7 @@ function path_redirect_import_read_file($file, $options = array()) {
         continue;
       }
     }
-    if (module_exists('locale')) {
+    /*if (module_exists('locale')) {
       if (empty($line[3])) {
         $line[3] = $options['language'];
       }
@@ -87,9 +63,33 @@ function path_redirect_import_read_file($file, $options = array()) {
           continue;
         }
       }
+    }*/
+
+//    $source_parts = redirect_parse_url($line[0]);
+    $source_parts = UrlHelper::parse($line[0]);
+
+    /** @var array Redirect $existingRedirect */
+    $existingRedirect = redirect_repository()->findMatchingRedirect($source_parts['path'], $source_parts['query']);
+
+    if($existingRedirect) {
+      if($options['override']) {
+        foreach($existingRedirect as $key => $value) {
+          // TODO: Reuse existing redirects
+          $value->delete();
+        }
+      }
+      else {
+        continue;
+      }
     }
-    $source_parts = redirect_parse_url($line[0]);
-    $data = array(
+
+    /** @var Drupal\redirect\Entity\Redirect $redirect */
+    $redirect = Redirect::create();
+    $redirect->setSource($source_parts['path'], $source_parts['query']);
+    $redirect->setRedirect($line[1]);
+    $redirect->setStatusCode($line[2]);
+
+    /*$data = array(
       'line_no' => $line_no,
       'source' => $source_parts['url'],
       'redirect' => isset($line[1]) ? $line[1] : NULL,
@@ -108,6 +108,15 @@ function path_redirect_import_read_file($file, $options = array()) {
     else {
       $count++;
     }
+    */
+    try {
+      $redirect->save();
+      $count++;
+    }
+    catch(Exception $e) {
+      $messages[] = $e->getMessage();
+    }
+
   }
   fclose($f);
   if ($count > 0) {

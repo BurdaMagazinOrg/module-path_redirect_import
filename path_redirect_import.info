@@ -1,5 +1,0 @@
-name = Redirect Import
-description = Provides the ability to import redirects for the Redirect module
-core = 7.x
-dependencies[] = redirect
-files[] = tests/path_redirect_import.test
