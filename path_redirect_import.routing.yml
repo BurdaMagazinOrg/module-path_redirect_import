@@ -5,6 +5,3 @@ path_redirect_import.import:
     _form: \Drupal\path_redirect_import\Form\PathRedirectImportAdminForm
   requirements:
     _permission: 'administer redirects'
-
-path_redirect_import.export:
-  path: 'admin/config/search/redirect/export'

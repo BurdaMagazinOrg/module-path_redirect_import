@@ -65,7 +65,6 @@ function path_redirect_import_read_file($file, $options = array()) {
       }
     }*/
 
-//    $source_parts = redirect_parse_url($line[0]);
     $source_parts = UrlHelper::parse($line[0]);
 
     /** @var array Redirect $existingRedirect */
@@ -89,26 +88,6 @@ function path_redirect_import_read_file($file, $options = array()) {
     $redirect->setRedirect($line[1]);
     $redirect->setStatusCode($line[2]);
 
-    /*$data = array(
-      'line_no' => $line_no,
-      'source' => $source_parts['url'],
-      'redirect' => isset($line[1]) ? $line[1] : NULL,
-      'status_code' => $line[2],
-      'override' => $options['override'],
-      'language' => isset($line[3]) ? $line[3] : LANGUAGE_NONE,
-    );
-    if (!empty($source_parts['query'])) {
-      $data['source_options']['query'] = $source_parts['query'];
-    }
-
-    $insert_row = path_redirect_import_save_data($data);
-    if (!$insert_row['success']) {
-      $messages[] = $insert_row['message'];
-    }
-    else {
-      $count++;
-    }
-    */
     try {
       $redirect->save();
       $count++;
@@ -124,101 +103,4 @@ function path_redirect_import_read_file($file, $options = array()) {
     $success = TRUE;
   }
   return array('success' => $success, 'message' => $messages);
-}
-
-/**
- * Function for save data from .csv file into the database
- */
-function path_redirect_import_save_data($data) {
-  $redirect = (object) $data;
-  if ($redirect->redirect != '<front>') {
-    $parts = redirect_parse_url($redirect->redirect);
-    if (!empty($parts['query'])) {
-      $redirect->redirect_options['query'] = $parts['query'];
-    }
-    if (!empty($parts['scheme']) && $parts['scheme'] == 'https') {
-      $redirect->redirect_options['https'] = TRUE;
-    }
-
-    if (!url_is_external($parts['url'])) {
-      if (drupal_lookup_path('source', $parts['url'], $redirect->language) || drupal_valid_path($parts['url']) || is_file($parts['url'])) {
-        $redirect->redirect = drupal_get_normal_path($parts['url'], $redirect->language);
-      }
-      else {
-        $redirect->redirect = FALSE;
-      }
-    }
-    else {
-      $redirect->redirect = $parts['url'];
-    }
-  }
-
-  redirect_object_prepare($redirect);
-  redirect_hash($redirect);
-  $existing = redirect_load_by_hash($redirect->hash);
-  if ($existing && $redirect->override) {
-    $query = isset($redirect->source_options['query']) ? $redirect->source_options['query'] : array();
-    $rid = redirect_load_by_source($redirect->source, $redirect->language, $query);
-    $redirect->rid = $rid->rid;
-  }
-  if ($existing && !$redirect->override) {
-    return array(
-      'success' => FALSE,
-      'message' => filter_xss(t('Line @line_no: The source "@source" is already being redirected.', array(
-        '@line_no' => $data['line_no'],
-        '@source' => $data['source'],
-      ))),
-    );
-  }
-  elseif (empty($redirect->redirect)) {
-    return array(
-      'success' => FALSE,
-      'message' => filter_xss(t('Line @line_no: The destination "@dest" URL/path does not exist.', array(
-        '@line_no' => $data['line_no'],
-        '@dest' => $data['redirect'],
-      ))),
-    );
-  }
-  else {
-    redirect_save($redirect);
-  }
-  return array('success' => TRUE);
-}
-
-/**
- * Generates and sends CSV file with redirects
- */
-function path_redirect_import_export_redirects($redirects) {
-  $fp = fopen('php://output', 'w');
-  foreach ($redirects as $redirect) {
-    // Reset the cache so we won't exhaust memory.
-    $redirect = redirect_load($redirect->rid, TRUE);
-    $source = $redirect->source;
-    $redirect_url = $redirect->redirect;
-
-    if (isset($redirect->source_options['query'])) {
-      $source .= '?' . drupal_http_build_query($redirect->source_options['query']);
-    }
-    if (empty($redirect_url)) {
-      $redirect_url = '<front>';
-    }
-
-    $line = array($source, $redirect_url);
-    if ($redirect->status_code) {
-      $line[] = $redirect->status_code;
-    }
-    if ($redirect->language != LANGUAGE_NONE) {
-      if (count($line) == 2) {
-        $line[] = '';
-      }
-      $line[] = $redirect->language;
-    }
-    fputcsv($fp, $line);
-  }
-  fclose($fp);
-
-  drupal_add_http_header('Content-Type', 'text/csv');
-  drupal_add_http_header('Content-Disposition', 'attachment;filename=redirects.csv');
-
-  drupal_exit();
 }
