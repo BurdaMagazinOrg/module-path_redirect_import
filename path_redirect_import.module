@@ -23,9 +23,9 @@ function path_redirect_import_read_file($file, $options = array()) {
     return array('success' => FALSE, 'message' => array(t('Unable to read the file')));
   }
   $line_no = 0;
-  $count = 0;
   $messages = array();
-  $success = FALSE;
+  $operations = array();
+  $redirect_options = redirect_status_code_options();
 
   while ($line = fgetcsv($f, 0, $options['delimiter'])) {
     $line_no++;
@@ -46,7 +46,6 @@ function path_redirect_import_read_file($file, $options = array()) {
       $line[2] = $options['status_code'];
     }
     else {
-      $redirect_options = redirect_status_code_options();
       if (!isset($redirect_options[$line[2]])) {
         $messages[] = t('Line @line_no contains invalid status code', array('@line_no' => $line_no));
         continue;
@@ -65,47 +64,79 @@ function path_redirect_import_read_file($file, $options = array()) {
       }
     }*/
 
-    $source_parts = UrlHelper::parse($line[0]);
-
-    /** @var array Redirect $existingRedirect */
-    $existingRedirect = redirect_repository()->findMatchingRedirect($source_parts['path'], $source_parts['query']);
-
-    if($existingRedirect) {
-      if($options['override']) {
-        foreach($existingRedirect as $key => $value) {
-          // TODO: Reuse existing redirects
-          $value->delete();
-        }
-      }
-      else {
-        continue;
-      }
-    }
-
-    /** @var Drupal\redirect\Entity\Redirect $redirect */
-    $redirect = Redirect::create();
-    $redirect->setSource($source_parts['path'], $source_parts['query']);
-    if(UrlHelper::isExternal($line[1])) {
-      continue;
-    }
-    else {
-      $redirect->setRedirect($line[1]);
-    }
-    $redirect->setStatusCode($line[2]);
-
-    try {
-      $redirect->save();
-      $count++;
-    }
-    catch(Exception $e) {
-      $messages[] = $e->getMessage();
-    }
+    $operations[] = array(
+      'saveRedirect_callback', array($line, $options)
+    );
 
   }
   fclose($f);
-  if ($count > 0) {
-    $messages[] = t('@count row(s) imported.', array('@count' => $count));
-    $success = TRUE;
+
+  $batch = array(
+    'title' => t('saving redirects'),
+    'operations' => $operations,
+    'finished' => 'saveRedirectFinishedCallback',
+    'file' => drupal_get_path('module', 'path_redirect_import').'/path_redirect_import.module'
+  );
+
+
+  batch_set($batch);
+
+  return array('message' => $messages);
+}
+
+function saveRedirect_callback($line, $options, &$context) {
+  $source_parts = UrlHelper::parse($line[0]);
+
+  /** @var array Redirect $existingRedirect */
+  $existingRedirect = redirect_repository()->findMatchingRedirect(ltrim($source_parts['path'], '/'), $source_parts['query']);
+
+  if($existingRedirect) {
+    if($options['override']) {
+      foreach($existingRedirect as $key => $value) {
+        // TODO: Reuse existing redirects
+        $value->delete();
+      }
+    }
+    else {
+      return;
+    }
   }
-  return array('success' => $success, 'message' => $messages);
+
+  /** @var Drupal\redirect\Entity\Redirect $redirect */
+  $redirect = Redirect::create();
+  $redirect->setSource($source_parts['path'], $source_parts['query']);
+  if(UrlHelper::isExternal($line[1])) {
+    return;
+//      setRedirect($redirect, $line[1]);
+  }
+  else {
+    $redirect->setRedirect($line[1]);
+  }
+  $redirect->setStatusCode($line[2]);
+
+  try {
+    $redirect->save();
+    $context['results'][] = array('success'=>true);
+  }
+  catch(Exception $e) {
+    $context['results'][] = array('success'=>true, 'message'=>$e->getMessage());
+    $context['message'] = $e->getMessage();
+  }
+}
+
+function saveRedirectFinishedCallback($success, $results, $operations) {
+  // The 'success' parameter means no fatal PHP errors were detected. All
+  // other error management should be handled using 'results'.
+  if ($success) {
+    $message = \Drupal::translation()->formatPlural(count($results), 'One redirect processed.', '@count redirects processed.');
+  }
+  else {
+    $message = t('Finished with an error.');
+  }
+  drupal_set_message($message);
+}
+
+function setRedirect($redirect, $url, array $query = array(), array $options = array()) {
+  $uri = $url . ($query ? '?' . UrlHelper::buildQuery($query) : '');
+  $redirect->redirect_redirect->set(0, [$uri, 'options' => $options]);
 }

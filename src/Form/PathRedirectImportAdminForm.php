@@ -129,10 +129,7 @@ class PathRedirectImportAdminForm extends ConfigFormBase {
 
     $result = path_redirect_import_read_file(
       $file->getFileUri(), $form_state->getValues());
-    if ($result['success']) {
-      drupal_set_message(implode('<br />', $result['message']));
-    }
-    else {
+    if(!empty($result['message'])) {
       drupal_set_message(implode('<br />', $result['message']), 'error');
     }
 
