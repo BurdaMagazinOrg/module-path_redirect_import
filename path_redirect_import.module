@@ -110,7 +110,10 @@ function saveRedirect_callback($line, $options, &$context) {
 //      setRedirect($redirect, $line[1]);
   }
   else {
-    $redirect->setRedirect($line[1]);
+    /** @var \Drupal\Core\Path\AliasManager $aliasManager */
+    $aliasManager = \Drupal::service('path.alias_manager');
+    $path = $aliasManager->getPathByAlias('/'.ltrim($line[1], '/'));
+    $redirect->setRedirect($path);
   }
   $redirect->setStatusCode($line[2]);
 
