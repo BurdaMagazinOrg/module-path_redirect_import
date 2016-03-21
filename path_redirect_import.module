@@ -87,6 +87,10 @@ function path_redirect_import_read_file($file, $options = array()) {
 function saveRedirect_callback($line, $options, &$context) {
   $source_parts = UrlHelper::parse($line[0]);
 
+  if(!$source_parts['path'] || $source_parts['path'] == '/') {
+    return;
+  }
+
   /** @var array Redirect $existingRedirect */
   $existingRedirect = redirect_repository()->findMatchingRedirect(ltrim($source_parts['path'], '/'), $source_parts['query']);
 
