@@ -91,9 +91,14 @@ function saveRedirect_callback($line, $options, &$context) {
     return;
   }
 
-  /** @var array Redirect $existingRedirect */
-  $existingRedirect = redirect_repository()->findMatchingRedirect(ltrim($source_parts['path'], '/'), $source_parts['query']);
-
+  try {
+    /** @var array Redirect $existingRedirect */
+    $existingRedirect = redirect_repository()->findMatchingRedirect(ltrim($source_parts['path'], '/'), $source_parts['query']);
+  }
+  catch (\Drupal\redirect\Exception\RedirectLoopException $e) {
+    $context['message'] = $e->getMessage();
+    return;
+  }
   if($existingRedirect) {
     if($options['override']) {
       foreach($existingRedirect as $key => $value) {
