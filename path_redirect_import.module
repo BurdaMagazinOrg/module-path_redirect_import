@@ -115,8 +115,8 @@ function saveRedirect_callback($line, $options, &$context) {
   $redirect = Redirect::create();
   $redirect->setSource($source_parts['path'], $source_parts['query']);
   if(UrlHelper::isExternal($line[1])) {
-    return;
-//      setRedirect($redirect, $line[1]);
+    // @todo Redirect::setRedirect() assumes that all redirects are internal.
+    setRedirect($redirect, $line[1]);
   }
   else {
     /** @var \Drupal\Core\Path\AliasManager $aliasManager */
@@ -150,5 +150,5 @@ function saveRedirectFinishedCallback($success, $results, $operations) {
 
 function setRedirect($redirect, $url, array $query = array(), array $options = array()) {
   $uri = $url . ($query ? '?' . UrlHelper::buildQuery($query) : '');
-  $redirect->redirect_redirect->set(0, [$uri, 'options' => $options]);
+  $redirect->redirect_redirect->set(0, ['uri' => $uri, 'options' => $options]);
 }
