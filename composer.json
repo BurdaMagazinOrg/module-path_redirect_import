@@ -1,0 +1,10 @@
+{
+  "name": "drupal/path_redirect_import",
+  "description": "Provides the ability to import redirects for the Redirect module.",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "minimum-stability": "dev",
+  "require": {
+    "drupal/redirect": "*"
+  }
+}
