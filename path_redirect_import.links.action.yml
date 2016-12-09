@@ -1,0 +1,5 @@
+path_redirect_import.import:
+  route_name: path_redirect_import.import
+  title: 'Import redirects'
+  appears_on:
+    - 'redirect.list'
