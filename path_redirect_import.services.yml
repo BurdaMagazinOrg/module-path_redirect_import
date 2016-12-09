@@ -1,0 +1,4 @@
+services:
+  path_redirect_import.redirect_import:
+    class: Drupal\path_redirect_import\RedirectImport
+    arguments: ['@language_manager']

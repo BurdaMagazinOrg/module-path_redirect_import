@@ -1,5 +1,5 @@
 path_redirect_import.import_form:
   route_name: path_redirect_import.import
-  title: 'URL redirects import'
+  title: 'Import'
   description: 'Import redirects from file'
-  parent: system.admin_config_search
+  parent: redirect.list
