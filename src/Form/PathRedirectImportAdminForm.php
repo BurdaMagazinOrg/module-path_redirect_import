@@ -11,6 +11,8 @@ namespace Drupal\path_redirect_import\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Language\LanguageManager;
+use Drupal\path_redirect_import\RedirectImport;
 
 class PathRedirectImportAdminForm extends ConfigFormBase {
 
@@ -36,7 +38,7 @@ class PathRedirectImportAdminForm extends ConfigFormBase {
   }
 
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $form = array();
+
     $form['csv'] = array(
       '#type' => 'fieldset',
       '#title' => $this->t('Import from .csv or .txt file'),
@@ -91,15 +93,23 @@ class PathRedirectImportAdminForm extends ConfigFormBase {
       '#default_value' => 301,
       '#options' => redirect_status_code_options(),
     );
-    /*if (module_exists('locale')) {
+
+    if (\Drupal::moduleHandler()->moduleExists('language')) {
       $form['advanced']['language'] = array(
         '#type' => 'select',
         '#title' => $this->t('Redirect language'),
         '#description' => $this->t('A redirect set for a specific language will always be used when requesting this page in that language, and takes precedence over redirects set for <em>All languages</em>.'),
         '#default_value' => LANGUAGE_NONE,
-        '#options' => array(LANGUAGE_NONE => $this->t('All languages')) + locale_language_list('name'),
+        '#options' => array(
+          LANGUAGE_NONE => $this->t('All languages'),
+        ),
       );
-    }*/
+
+      $languageManager = \Drupal::languageManager();
+      foreach ($languageManager->getLanguages() as $language) {
+        $form['advanced']['language']['#options'][$language->getId()] = $language->getName();
+      }
+    }
 
 //    $form['submit'] = array('#type' => 'submit', '#value' => $this->t('Import'));
 //    $form['#attributes'] = array('enctype' => "multipart/form-data");
