@@ -4,9 +4,9 @@
  * @file
  * Page and form to import drupal path redirects
  */
-use Drupal\Component\Utility\UrlHelper;
+
+use Drupal\Core\Language\Language;
 use Drupal\redirect\Entity\Redirect;
-use Drupal\path_redirect_import\RedirectImport;
 
 /**
  * Function that processes the file
@@ -17,7 +17,7 @@ function path_redirect_import_read_file($file, $options = array()) {
     'no_headers' => TRUE,
     'override' => FALSE,
     'status_code' => '301',
-    'language' => LANGUAGE_NONE,
+    'language' => Language::LANGCODE_NOT_SPECIFIED,
   );
 
   if (!$f = fopen($file, 'r')) {
