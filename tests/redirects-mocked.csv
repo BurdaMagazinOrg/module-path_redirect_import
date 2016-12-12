@@ -1,0 +1,14 @@
+From,To,Redirect,Language
+hello-world,node/2,
+with-query?query=alt,node/3,
+<front>,node/3
+/forward,node/4
+/blah12345,node/99997
+node/45,node/45
+blah/433,http://google.com
+test,http://markfullmer.com
+test/hello,http://corporaproject.org
+test/three,http://three.com
+
+missing/redirect,
+test/four,http://one.com,403

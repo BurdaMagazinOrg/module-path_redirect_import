@@ -2,153 +2,23 @@
 
 /**
  * @file
- * Page and form to import drupal path redirects
+ * Contains path_redirect_import.module..
  */
-use Drupal\Component\Utility\UrlHelper;
-use Drupal\redirect\Entity\Redirect;
+
+use Drupal\Core\Routing\RouteMatchInterface;
 
 /**
- * Function that processes the file
+ * Implements hook_help().
  */
-function path_redirect_import_read_file($file, $options = array()) {
-  $options += array(
-    'delimiter' => ',',
-    'no_headers' => TRUE,
-    'override' => FALSE,
-    'status_code' => '301',
-//    'language' => LANGUAGE_NOT_SPECIFIED,
-  );
+function path_redirect_import_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the path_redirect_import module.
+    case 'help.page.path_redirect_import':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Provides the ability to import redirects for the Redirect module') . '</p>';
+      return $output;
 
-  if (!$f = fopen($file, 'r')) {
-    return array('success' => FALSE, 'message' => array(t('Unable to read the file')));
+    default:
   }
-  $line_no = 0;
-  $messages = array();
-  $operations = array();
-  $redirect_options = redirect_status_code_options();
-
-  while ($line = fgetcsv($f, 0, $options['delimiter'])) {
-    $line_no++;
-    if ($line_no == 1 && !$options['no_headers']) {
-      drupal_set_message(t('Skipping the header row.'));
-      continue;
-    }
-
-    if (!is_array($line)) {
-      $messages[] = t('Line @line_no is invalid.', array('@line_no' => $line_no));
-      continue;
-    }
-    if (empty($line[0]) || empty($line[1])) {
-      $messages[] = t('Line @line_no contains invalid data.', array('@line_no' => $line_no));
-      continue;
-    }
-    if (empty($line[2])) {
-      $line[2] = $options['status_code'];
-    }
-    else {
-      if (!isset($redirect_options[$line[2]])) {
-        $messages[] = t('Line @line_no contains invalid status code', array('@line_no' => $line_no));
-        continue;
-      }
-    }
-    /*if (module_exists('locale')) {
-      if (empty($line[3])) {
-        $line[3] = $options['language'];
-      }
-      else {
-        $language_options = locale_language_list('name');
-        if (!isset($language_options[$line[3]])) {
-          $messages[] = t('Line @line_no contains invalid language code', array('@line_no' => $line_no));
-          continue;
-        }
-      }
-    }*/
-
-    $operations[] = array(
-      'saveRedirect_callback', array($line, $options)
-    );
-
-  }
-  fclose($f);
-
-  $batch = array(
-    'title' => t('saving redirects'),
-    'operations' => $operations,
-    'finished' => 'saveRedirectFinishedCallback',
-    'file' => drupal_get_path('module', 'path_redirect_import').'/path_redirect_import.module'
-  );
-
-
-  batch_set($batch);
-
-  return array('message' => $messages);
-}
-
-function saveRedirect_callback($line, $options, &$context) {
-  $source_parts = UrlHelper::parse($line[0]);
-
-  if(!$source_parts['path'] || $source_parts['path'] == '/') {
-    return;
-  }
-
-  try {
-    /** @var array Redirect $existingRedirect */
-    $existingRedirect = redirect_repository()->findMatchingRedirect(ltrim($source_parts['path'], '/'), $source_parts['query']);
-  }
-  catch (\Drupal\redirect\Exception\RedirectLoopException $e) {
-    $context['message'] = $e->getMessage();
-    return;
-  }
-  if($existingRedirect) {
-    if($options['override']) {
-      foreach($existingRedirect as $key => $value) {
-        // TODO: Reuse existing redirects
-        $value->delete();
-      }
-    }
-    else {
-      return;
-    }
-  }
-
-  /** @var Drupal\redirect\Entity\Redirect $redirect */
-  $redirect = Redirect::create();
-  $redirect->setSource($source_parts['path'], $source_parts['query']);
-  if(UrlHelper::isExternal($line[1])) {
-    return;
-//      setRedirect($redirect, $line[1]);
-  }
-  else {
-    /** @var \Drupal\Core\Path\AliasManager $aliasManager */
-    $aliasManager = \Drupal::service('path.alias_manager');
-    $path = $aliasManager->getPathByAlias('/'.ltrim($line[1], '/'));
-    $redirect->setRedirect($path);
-  }
-  $redirect->setStatusCode($line[2]);
-
-  try {
-    $redirect->save();
-    $context['results'][] = array('success'=>true);
-  }
-  catch(Exception $e) {
-    $context['results'][] = array('success'=>true, 'message'=>$e->getMessage());
-    $context['message'] = $e->getMessage();
-  }
-}
-
-function saveRedirectFinishedCallback($success, $results, $operations) {
-  // The 'success' parameter means no fatal PHP errors were detected. All
-  // other error management should be handled using 'results'.
-  if ($success) {
-    $message = \Drupal::translation()->formatPlural(count($results), 'One redirect processed.', '@count redirects processed.');
-  }
-  else {
-    $message = t('Finished with an error.');
-  }
-  drupal_set_message($message);
-}
-
-function setRedirect($redirect, $url, array $query = array(), array $options = array()) {
-  $uri = $url . ($query ? '?' . UrlHelper::buildQuery($query) : '');
-  $redirect->redirect_redirect->set(0, [$uri, 'options' => $options]);
 }

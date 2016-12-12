@@ -1,6 +1,8 @@
 name: Redirect Import
+type: module
 description: Provides the ability to import redirects for the Redirect module
 core: 8.x
+configure: redirect.import
+
 dependencies:
   - redirect
-type: module
