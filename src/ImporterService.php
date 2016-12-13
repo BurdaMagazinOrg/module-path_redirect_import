@@ -300,7 +300,7 @@ class ImporterService {
       try {
         /* @var \Symfony\Cmf\Component\Routing\ChainRouter $router */
         $router = \Drupal::service('router');
-        $route = $router->match($destination);
+        $route = $router->match($alias);
       }
       catch (\Exception $e) {
         return TRUE;
