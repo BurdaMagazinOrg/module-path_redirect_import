@@ -282,6 +282,9 @@ class ImporterService {
    *    A user-supplied URL path.
    */
   protected static function InternalPathMissing($destination) {
+    if ($destination == '<front>') {
+      return FALSE;
+    }
     $parsed = parse_url($destination);
     if (!$parsed['scheme']) {
       // Check for aliases *including* named anchors/query strings.
