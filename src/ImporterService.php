@@ -233,7 +233,7 @@ class ImporterService {
       $redirect->setRedirect($redirect_array['redirect']);
     }
     $redirect->setStatusCode($redirect_array['status_code']);
-    $redirect->setLanguage($redirect_array['language']);
+    $redirect->setLanguage(self::checkLanguage($redirect_array['language']));
     $redirect->save();
     drupal_set_message(t('@message_type redirect from @source to @redirect', array(
       '@message_type' => $message_type,
@@ -357,8 +357,7 @@ class ImporterService {
     $parsed_url = UrlHelper::parse(trim($row['source']));
     $path = isset($parsed_url['path']) ? $parsed_url['path'] : NULL;
     $query = isset($parsed_url['query']) ? $parsed_url['query'] : NULL;
-    // @todo: pass language dynamically.
-    $hash = Redirect::generateHash($path, $query, $row['language']);
+    $hash = Redirect::generateHash($path, $query, self::checkLanguage($row['language']));
 
     // Search for duplicate.
     $redirects = \Drupal::entityManager()
@@ -368,6 +367,53 @@ class ImporterService {
       return $redirects;
     }
     return FALSE;
+  }
+
+  /**
+   * Return a valid langcode, either from user input or default.
+   *
+   * @param string $langcode
+   *    The user-provided langcode to check if valid.
+   *
+   * @return string
+   *    The valid langcode.
+   */
+  protected static function checkLanguage($langcode) {
+    if (\Drupal::moduleHandler()->moduleExists('language')) {
+      if (!empty($langcode) && self::isValidLanguage($langcode)) {
+        return $langcode;
+      }
+    }
+    return Language::LANGCODE_NOT_SPECIFIED;
+  }
+
+  /**
+   * Check if the string is a valid langcode.
+   *
+   * @param string $langcode
+   *   A string to check.
+   *
+   * @return bool
+   *   Whether the langcode is valid.
+   */
+  protected static function isValidLanguage($langcode) {
+    return in_array($langcode, self::validLanguages());
+  }
+
+  /**
+   * Retrieve languages in the system.
+   *
+   * @return str[]
+   *    A list of langcodes known to the system.
+   */
+  protected static function validLanguages() {
+    $languages = \Drupal::languageManager()->getLanguages();
+    $languages = array_keys($languages);
+
+    $defaultLockedLanguages = \Drupal::languageManager()->getDefaultLockedLanguages();
+    $defaultLockedLanguages = array_keys($defaultLockedLanguages);
+
+    return array_merge($languages, $defaultLockedLanguages);
   }
 
 }

@@ -81,7 +81,7 @@ class RedirectImportForm extends FormBase {
       '#default_value' => '301',
       '#size' => 5,
     );
-    if (\Drupal::moduleHandler()->moduleExists('locale')) {
+    if (\Drupal::moduleHandler()->moduleExists('language')) {
       $options = array();
       // We always need a language.
       $languages = \Drupal::languageManager()->getLanguages();
