@@ -9,6 +9,7 @@ blah/433,http://google.com
 test,http://markfullmer.com
 test/hello,http://corporaproject.org
 test/three,http://three.com
-
+node/4,/fellowship
+node/4,http://drupal8.local/node/4
 missing/redirect,
 test/four,http://one.com,403

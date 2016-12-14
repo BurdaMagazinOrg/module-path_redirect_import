@@ -326,13 +326,23 @@ class ImporterService {
     }
     // Now check if the the resulting Drupal location would be identical.
     try {
+      $parsed = parse_url($row['redirect']);
+      if (!$parsed['scheme']) {
+        // If the destination is an internal link, prepare it.
+        $row['redirect'] = 'internal:' . self::addLeadingSlash($row['redirect']);
+      }
       $source_url = Url::fromUri('internal:/' . $row['source']);
       $redirect_url = Url::fromUri($row['redirect']);
-
       // It is relevant to do this comparison only in case the source path has
       // a valid route. Otherwise the validation will fail on the redirect path
       // being an invalid route.
       if ($source_url->toString() == $redirect_url->toString()) {
+        return TRUE;
+      }
+      // We still need to check external links, if the user has entered
+      // /node/3 => http://example.com/node/3.
+      $host = \Drupal::request()->getSchemeAndHttpHost();
+      if ($host . $source_url->toString() == $redirect_url->toString()) {
         return TRUE;
       }
     }
