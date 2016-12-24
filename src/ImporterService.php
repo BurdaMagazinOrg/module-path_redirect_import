@@ -125,11 +125,11 @@ class ImporterService {
       }
 
       if (!is_array($line)) {
-        self::$messages['warning'][] = t('Line @line_no is invalid.', array('@line_no' => $line_no));
+        self::$messages['warning'][] = t('Line @line_no is invalid; bypassed.', array('@line_no' => $line_no));
         continue;
       }
       if (empty($line[0]) || empty($line[1])) {
-        self::$messages['warning'][] = t('Line @line_no contains invalid data.', array('@line_no' => $line_no));
+        self::$messages['warning'][] = t('Line @line_no contains invalid data; bypassed.', array('@line_no' => $line_no));
         continue;
       }
       if (empty($line[2])) {
@@ -138,9 +138,17 @@ class ImporterService {
       else {
         $redirect_options = redirect_status_code_options();
         if (!isset($redirect_options[$line[2]])) {
-          self::$messages['warning'][] = t('Line @line_no contains invalid status code', array('@line_no' => $line_no));
+          self::$messages['warning'][] = t('Line @line_no contains invalid status code; bypassed.', array('@line_no' => $line_no));
           continue;
         }
+      }
+
+      if (empty($line[3])) {
+        $line[3] = $options['language'];
+      }
+      elseif (!self::isValidLanguage($line[3])) {
+        self::$messages['warning'][] = t('Line @line_no contains an invalid language code; bypassed.', array('@line_no' => $line_no));
+        continue;
       }
 
       // Build a row of data.
@@ -225,7 +233,7 @@ class ImporterService {
       $redirect->setSource($path, $query);
     }
     // Currently, the Redirect module's setRedirect function assumes
-    // all paths are internal. Therefore, we set it two ways.
+    // all paths are internal. If external, we will use redirect_redirect->set.
     if (parse_url($redirect_array['redirect'], PHP_URL_SCHEME)) {
       $redirect->redirect_redirect->set(0, array('uri' => $redirect_array['redirect']));
     }
@@ -233,7 +241,7 @@ class ImporterService {
       $redirect->setRedirect($redirect_array['redirect']);
     }
     $redirect->setStatusCode($redirect_array['status_code']);
-    $redirect->setLanguage(self::checkLanguage($redirect_array['language']));
+    $redirect->setLanguage($redirect_array['language']);
     $redirect->save();
     drupal_set_message(t('@message_type redirect from @source to @redirect', array(
       '@message_type' => $message_type,
@@ -367,7 +375,7 @@ class ImporterService {
     $parsed_url = UrlHelper::parse(trim($row['source']));
     $path = isset($parsed_url['path']) ? $parsed_url['path'] : NULL;
     $query = isset($parsed_url['query']) ? $parsed_url['query'] : NULL;
-    $hash = Redirect::generateHash($path, $query, self::checkLanguage($row['language']));
+    $hash = Redirect::generateHash($path, $query, $row['language']);
 
     // Search for duplicate.
     $redirects = \Drupal::entityManager()
@@ -380,24 +388,6 @@ class ImporterService {
   }
 
   /**
-   * Return a valid langcode, either from user input or default.
-   *
-   * @param string $langcode
-   *    The user-provided langcode to check if valid.
-   *
-   * @return string
-   *    The valid langcode.
-   */
-  protected static function checkLanguage($langcode) {
-    if (\Drupal::moduleHandler()->moduleExists('language')) {
-      if (!empty($langcode) && self::isValidLanguage($langcode)) {
-        return $langcode;
-      }
-    }
-    return Language::LANGCODE_NOT_SPECIFIED;
-  }
-
-  /**
    * Check if the string is a valid langcode.
    *
    * @param string $langcode
@@ -407,7 +397,12 @@ class ImporterService {
    *   Whether the langcode is valid.
    */
   protected static function isValidLanguage($langcode) {
-    return in_array($langcode, self::validLanguages());
+    if (\Drupal::moduleHandler()->moduleExists('language')) {
+      if (!empty($langcode) && in_array($langcode, self::validLanguages())) {
+        return TRUE;
+      }
+    }
+    return FALSE;
   }
 
   /**
