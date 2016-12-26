@@ -64,7 +64,6 @@ class RedirectImportForm extends FormBase {
       '#description' => array(
         '#theme' => 'file_upload_help',
         '#description' => $this->t('The CSV file must include the following columns in this order: "From URL","To URL","Redirect Status","Redirect Language". Defaults for status and language can be set in the advanced options, below.'),
-        '#upload_validators' => $validators,
       ),
       '#upload_validators' => $validators,
     );

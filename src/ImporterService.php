@@ -24,12 +24,12 @@ class ImporterService {
    * @param str[] $options
    *    User-supplied default flags.
    */
-  public function import($file, $options) {
+  public static function import($file, $options) {
     // Parse the CSV file into a readable array.
     $data = self::read($file, $options);
 
     // Perform Drupal-specific validation logic on each row.
-    $data = array_filter($data, array(self, 'preSave'));
+    $data = array_filter($data, array('self', 'preSave'));
 
     if ($options['suppress_messages'] != 1) {
       // Messaging/logging is separated out in case we want to suppress these.
@@ -71,7 +71,7 @@ class ImporterService {
   /**
    * Batch API callback.
    */
-  public function finish($success, $results, $operations) {
+  public static function finish($success, $results, $operations) {
     if ($success) {
       $message = t('Redirects processed.');
     }
@@ -174,7 +174,7 @@ class ImporterService {
    * @return bool
    *    A TRUE/FALSE value to be used by array_filter.
    */
-  protected static function preSave($row) {
+  public static function preSave($row) {
     // Disallow redirects from <front>.
     if ($row['source'] == '<front>') {
       self::$messages['warning'][] = t('You cannot create a redirect from the front page. Bypassing "@source".', array('@source' => $row['source']));
@@ -294,7 +294,7 @@ class ImporterService {
       return FALSE;
     }
     $parsed = parse_url($destination);
-    if (!$parsed['scheme']) {
+    if (!isset($parsed['scheme'])) {
       // Check for aliases *including* named anchors/query strings.
       $alias = self::addLeadingSlash($destination);
       $normal_path = \Drupal::service('path.alias_manager')->getPathByAlias($alias);
@@ -302,11 +302,14 @@ class ImporterService {
         return FALSE;
       }
       // Check for aliases *excluding* named anchors/query strings.
-      $alias = self::addLeadingSlash($parsed['path']);
-      $normal_path = \Drupal::service('path.alias_manager')->getPathByAlias($alias);
-      if ($alias != $normal_path) {
-        return FALSE;
+      if (isset($parsed['path'])) {
+        $alias = self::addLeadingSlash($parsed['path']);
+        $normal_path = \Drupal::service('path.alias_manager')->getPathByAlias($alias);
+        if ($alias != $normal_path) {
+          return FALSE;
+        }
       }
+
       // Get the route object from the redirect location.
       try {
         /* @var \Symfony\Cmf\Component\Routing\ChainRouter $router */
@@ -335,7 +338,7 @@ class ImporterService {
     // Now check if the the resulting Drupal location would be identical.
     try {
       $parsed = parse_url($row['redirect']);
-      if (!$parsed['scheme']) {
+      if (!isset($parsed['scheme'])) {
         // If the destination is an internal link, prepare it.
         $row['redirect'] = 'internal:' . self::addLeadingSlash($row['redirect']);
       }
