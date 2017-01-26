@@ -147,7 +147,7 @@ class RedirectImportTest extends SearchTestBase {
     $this->assertText('You are attempting to redirect "node/2" to itself. Bypassed, as this will result in an infinite loop.', format_string('Bypass infinite loops.', array()));
     $this->assertText('The destination path "node/99997" does not exist on the site. Redirect from "blah12345" bypassed.', format_string('Bypass redirects to nonexistent internal paths.', array()));
     $this->assertText('The destination path "fellowship" does not exist on the site. Redirect from "node/2" bypassed.', format_string('Bypass redirects to nonexistent URL aliases.', array()));
-
+    $this->assertText('Redirects from anchor fragments (i.e., with "#) are not allowed. Bypassing "redirect-with-anchor#anchor".', format_string('Bypass redirects from anchor fragments', array()));
   }
 
 }

@@ -12,3 +12,4 @@ test/three,http://three.com
 node/2,/fellowship
 missing/redirect,
 test/four,http://one.com,403
+redirect-with-anchor#anchor,node/1
