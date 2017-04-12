@@ -2,7 +2,7 @@
 
 namespace Drupal\path_redirect_import\Tests\Functional;
 
-use Drupal\search\Tests\SearchTestBase;
+use Drupal\Tests\BrowserTestBase;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\language\Entity\ConfigurableLanguage;
@@ -12,7 +12,7 @@ use Drupal\language\Entity\ConfigurableLanguage;
  *
  * @group path_redirect_import
  */
-class RedirectImportTest extends SearchTestBase {
+class RedirectImportTest extends BrowserTestBase {
 
   /**
    * Modules to install.
@@ -20,6 +20,7 @@ class RedirectImportTest extends SearchTestBase {
    * @var array
    */
   public static $modules = array(
+    'node',
     'file',
     'redirect',
     'path_redirect_import',
@@ -64,7 +65,7 @@ class RedirectImportTest extends SearchTestBase {
   protected function setUp() {
     parent::setUp();
 
-    $this->testUser = $this->drupalCreateUser(array(
+    $this->testUser = $this->drupalCreateUser([
       'access content',
       'administer nodes',
       'access site reports',
@@ -72,7 +73,7 @@ class RedirectImportTest extends SearchTestBase {
       'access administration pages',
       'administer site configuration',
       'administer redirects',
-    ));
+    ]);
     $this->drupalLogin($this->testUser);
 
     // Add a new language.
@@ -125,29 +126,26 @@ class RedirectImportTest extends SearchTestBase {
   public function testRedirectImport() {
 
     // Copy other test files from simpletest.
-    $csv = drupal_get_path('module', 'path_redirect_import') . '/src/Tests/files/' . 'test-redirects.csv';
+    $csv = drupal_get_path('module', 'path_redirect_import') . '/tests/' . 'test-redirects.csv';
     $edit = array(
       'override' => TRUE,
-      'files[csv_file]' => drupal_realpath($csv),
+      'files[csv_file]' => \Drupal::service('file_system')->realpath($csv),
     );
 
-    $form_path = 'admin/config/search/redirect/import';
-    $this->drupalGet($form_path);
-    $this->drupalPostForm(NULL, $edit, t('Import'));
+    $this->drupalGet('admin/config/search/redirect/import');
+    $this->submitForm($edit, t('Import'));
 
     // Assertions.
-    $this->assertText('Added redirect from hello-world to node/2', format_string('Add redirect from arbitrary alias without leading slash to existing path', array()));
-    $this->assertText('Added redirect from with-query?query=alt to node/1', format_string('Add redirect from arbitrary alias with query to existing path', array()));
-    $this->assertText('Added redirect from forward to node/2', format_string('Add redirect from arbitrary alias with leading slash to existing path', array()));
-    $this->assertText('Added redirect from test/hello to http://corporaproject.org', format_string('Add redirect to external URL', array()));
-
-    $this->assertText('Line 13 contains invalid data; bypassed.', format_string('Bypass row with missing redirect', array()));
-    $this->assertText('Line 14 contains invalid status code; bypassed.', format_string('Bypass row with invalid status code', array()));
-    $this->assertText('You cannot create a redirect from the front page.', format_string('Bypass redirect from &lt;front&gt;.', array()));
-    $this->assertText('You are attempting to redirect "node/2" to itself. Bypassed, as this will result in an infinite loop.', format_string('Bypass infinite loops.', array()));
-    $this->assertText('The destination path "node/99997" does not exist on the site. Redirect from "blah12345" bypassed.', format_string('Bypass redirects to nonexistent internal paths.', array()));
-    $this->assertText('The destination path "fellowship" does not exist on the site. Redirect from "node/2" bypassed.', format_string('Bypass redirects to nonexistent URL aliases.', array()));
-    $this->assertText('Redirects from anchor fragments (i.e., with "#) are not allowed. Bypassing "redirect-with-anchor#anchor".', format_string('Bypass redirects from anchor fragments', array()));
+    $this->assertSession()->pageTextContains('Added redirect from hello-world to node/2');
+    $this->assertSession()->pageTextContains('Added redirect from with-query?query=alt to node/1');
+    $this->assertSession()->pageTextContains('Added redirect from forward to node/2');
+    $this->assertSession()->pageTextContains('Added redirect from test/hello to http://corporaproject.org');
+    $this->assertSession()->pageTextContains('Line 13 contains invalid data; bypassed.');
+    $this->assertSession()->pageTextContains('Line 14 contains invalid status code; bypassed.');
+    $this->assertSession()->pageTextContains('You are attempting to redirect "node/2" to itself. Bypassed, as this will result in an infinite loop.');
+    $this->assertSession()->pageTextContains('The destination path "node/99997" does not exist on the site. Redirect from "blah12345" bypassed.');
+    $this->assertSession()->pageTextContains('The destination path "fellowship" does not exist on the site. Redirect from "node/2" bypassed.');
+    $this->assertSession()->pageTextContains('Redirects from anchor fragments (i.e., with "#) are not allowed. Bypassing "redirect-with-anchor#anchor".');
   }
 
 }
